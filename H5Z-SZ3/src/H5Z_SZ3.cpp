@@ -10,7 +10,7 @@
 
 using namespace SZ;
 
-//h5repack -f UD=32034,0,7,3,0,1,1,8,8,128 /home/arham23/Software/SZ3/test/testfloat_8_8_128.dat.h5 tf_8_8_128.dat.sz.h5
+//h5repack -f UD=32034,0 /home/arham23/Software/SZ3/test/testfloat_8_8_128.dat.h5 tf_8_8_128.dat.sz.h5
 
 //load from "sz.config" in local directory if 1 else use default values or cd values
 int loadConfigFile = 0;

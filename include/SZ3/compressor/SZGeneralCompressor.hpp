@@ -10,6 +10,7 @@
 #include "SZ3/utils/Timer.hpp"
 #include "SZ3/def.hpp"
 #include <cstring>
+#include <cstdio>
 
 namespace SZ {
     template<class T, uint N, class Frontend, class Encoder, class Lossless>
@@ -33,7 +34,8 @@ namespace SZ {
             std::vector<int> quant_inds = frontend.compress(data);
 //            timer.stop("Prediction & Quantization");
 
-            size_t bufferSize = 1.5 * (frontend.size_est());
+            size_t bufferSize = 3.0 * (frontend.size_est());
+	    printf("FE SE: %f", frontend.size_est());
             uchar *buffer = new uchar[bufferSize];
             uchar *buffer_pos = buffer;
 
