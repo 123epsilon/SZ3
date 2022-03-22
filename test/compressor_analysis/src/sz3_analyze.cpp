@@ -28,8 +28,8 @@ int main(int argc, char** argv)
 
 	if (argc < 3) {
 	
-		printf("Usage: sz_analyze [target file] [r1,r2,...]\n");
-		printf("Example: sz_analyze testfloat_8_8_128 8 8 128\n");
+		printf("Usage: sz3_analyze [target file] [r1,r2,...]\n");
+		printf("Example: sz3_analyze testfloat_8_8_128.dat 8 8 128\n");
 		exit(0);
 	}
 
