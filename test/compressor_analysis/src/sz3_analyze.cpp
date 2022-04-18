@@ -5,6 +5,8 @@
 #include "SZ3/utils/Config.hpp"
 #include <stdlib.h>
 #include <cmath>
+#include <random>
+#include <algorithm>
 
 #define OUTFILE "/home/ac.arhammkhan/sz3_data.csv"
 
@@ -16,12 +18,14 @@ int main(int argc, char** argv)
 	size_t r1=0,r2=0,r3=0,r4=0,r5=0,outSize;
 	size_t nbEle = 0;
 	SZ::Config conf;
-	float errorBounds[5] = {1E-2, 1E-3, 1E-4, 1E-5, 1E-6};
+	float errorBounds[5] = {0.01, 0.05, 0.1, 0.15, 0.2}; //{1E-2, 1E-3, 1E-4, 1E-5, 1E-6};
 	int interpBlockSizes[6] = {8,16,32,64,128,256};
-	
+		
 	int quantBinCnts[6];
 	int n = 0;
 	for(int i = 10; i <= 20; i += 2){ quantBinCnts[n] = pow(2,i); n++; }
+	
+	int NSAMPLES = 10;
 	
 	char *cmpData;
 	float *decData;
@@ -95,7 +99,7 @@ int main(int argc, char** argv)
 	
 	//for(int EB_MODE = SZ::EB_ABS; EB_MODE <= SZ::EB_ABS_OR_REL; EB_MODE++)
 	{	
-		uint8_t EB_MODE = SZ::EB_ABS;
+		uint8_t EB_MODE = SZ::EB_REL;
 		for(uint8_t ALG_MODE = SZ::ALGO_LORENZO_REG; ALG_MODE <= SZ::ALGO_INTERP; ALG_MODE++)
 		{
 			for(uint8_t INTERP_MODE = SZ::INTERP_ALGO_LINEAR; INTERP_MODE <= SZ::INTERP_ALGO_CUBIC; INTERP_MODE++)
@@ -106,64 +110,74 @@ int main(int argc, char** argv)
 				conf.errorBoundMode = EB_MODE;
 				conf.cmprAlgo = ALG_MODE;
 				conf.interpAlgo = INTERP_MODE;
+			
+				//random selection for data variety
+				std::vector<int> ebInd(NSAMPLES);
+				std::vector<int> bsInd(NSAMPLES);
+				std::vector<int> qbinInd(NSAMPLES);
+				std::vector<int> inds(6);
+
+				std::iota(inds.begin(), inds.end(), 0);
+
+				auto gen = std::mt19937{std::random_device{}()};
 				
-				for(float eb : errorBounds)
+				std::sample(inds.begin(), inds.end()-1, ebInd.begin(), NSAMPLES, gen);
+				std::sample(inds.begin(), inds.end(), bsInd.begin(), NSAMPLES, gen);
+				std::sample(inds.begin(), inds.end(), qbinInd.begin(), NSAMPLES, gen);
+				
+				for(int k = 0; k < NSAMPLES; k++)
 				{
-					for(int blockSize : interpBlockSizes)
-					{
-						for(int numBins : quantBinCnts)
-						{
-							
-							conf.absErrorBound = eb;
-							conf.interpBlockSize = blockSize;
-							conf.quantbinCnt = numBins;
-
-							outSize = 0;
-							cmpData = SZ_compress<float>(conf, data, outSize);
-							SZ::Timer timer(true);
-							float compressRatio = conf.num * 1.0 * sizeof(float) / outSize;
-							double compress_time = timer.stop();
-																												 
-							float avg_err = 0;
-
-							SZ::Config t_conf;
-							decData = SZ_decompress<float>(t_conf, cmpData, outSize);
-							int c = 0;
-							for(int i = 0; i < nbEle; i++)
-							{
-								
-								if(!isnan(data[i]))
-								{
-									avg_err += abs(data[i] - decData[i]);
-									c++;
-								}
+						
+					//conf.absErrorBound = eb;
+					conf.relErrorBound = errorBounds[ebInd[k]];
+					conf.interpBlockSize = interpBlockSizes[bsInd[k]];
+					conf.quantbinCnt = quantBinCnts[qbinInd[k]];
 				
-										
+					outSize = 0;
+					cmpData = SZ_compress<float>(conf, data, outSize);
+					SZ::Timer timer(true);
+					float compressRatio = conf.num * 1.0 * sizeof(float) / outSize;
+					double compress_time = timer.stop();
+																										 
+					float avg_err = 0;
+
+					SZ::Config t_conf;
+					decData = SZ_decompress<float>(t_conf, cmpData, outSize);
+					int c = 0;
+					for(int i = 0; i < nbEle; i++)
+					{
+						
+						if(!isnan(data[i]))
+						{
+							avg_err += abs(data[i] - decData[i]);
+							c++;
+						}
+		
 								
-								
-							}
+						
+						
+					}
 
-							
-							printf("AE: %f | %zu | %i\n", avg_err, conf.num, c);
-							avg_err /= conf.num;
-							printf("%f\n", avg_err);
+					
+					printf("AE: %f | %zu | %i\n", avg_err, conf.num, c);
+					avg_err /= conf.num;
+					printf("%f\n", avg_err);
 
-							//fname, EB_MODE, EB, CMPR_ALGO, INTERP_ALGO, interpBlockSize, quantBinCnt, size(bytes), nbEle, min, max, range, avg_value, entropy, variance, avg_err, compress_time  
-							char outStr[4096];
-							sprintf(outStr, "%s, %s, %f, %s, %s, %i, %i, %i, %i, %f, %f, %f, %f, %f, %f, %f, %f\n", \
-									targetFile, SZ::EB_STR[EB_MODE], eb, SZ::ALGO_STR[ALG_MODE], SZ::INTERP_ALGO_STR[INTERP_MODE], blockSize, numBins, property->totalByteSize, \
-									nbEle, property->minValue, property->maxValue, property->valueRange, property->avgValue, property->entropy, property->zeromean_variance, \
-									avg_err, compress_time);
-							
-							printf("%s", outStr);
-							outfile << outStr;
+					//fname, EB_MODE, EB, CMPR_ALGO, INTERP_ALGO, interpBlockSize, quantBinCnt, size(bytes), nbEle, min, max, range, avg_value, entropy, variance, avg_err, compress_time  
+					char outStr[4096];
+					sprintf(outStr, "%s, %s, %f, %s, %s, %i, %i, %i, %i, %f, %f, %f, %f, %f, %f, %f, %f\n", 
+							targetFile, SZ::EB_STR[EB_MODE], errorBounds[ebInd[k]], SZ::ALGO_STR[ALG_MODE], SZ::INTERP_ALGO_STR[INTERP_MODE], interpBlockSizes[bsInd[k]], quantBinCnts[qbinInd[k]],
+							property->totalByteSize, nbEle, property->minValue, property->maxValue, property->valueRange, property->avgValue, property->entropy, 
+							property->zeromean_variance, avg_err, compress_time);
+					
+					printf("%s", outStr);
+					outfile << outStr;
 
-							delete(cmpData);
-							delete(decData);
+					delete[] cmpData;
+					delete[] decData;
 
-						}//nb
-					}//bs
-				}//eb
+						
+				}//samples
 					
 				
 			}//interp
@@ -175,7 +189,7 @@ int main(int argc, char** argv)
 
 	outfile.close();
 
-	delete(data);
+	delete[] data;
 
 	return 0;
 
