@@ -6,9 +6,23 @@
 #define SZ3_H5Z_SZ3_H
 
 #define H5Z_FILTER_SZ3 32024
+
+#define SZ_FLOAT 0
+#define SZ_DOUBLE 1
+#define SZ_UINT8 2
+#define SZ_INT8 3
+#define SZ_UINT16 4
+#define SZ_INT16 5
+#define SZ_UINT32 6
+#define SZ_INT32 7
+#define SZ_UINT64 8
+#define SZ_INT64 9
+
 #include "SZ3/api/sz.hpp"
 #include "SZ3/utils/ByteUtil.hpp"
 #include "hdf5.h"
+
+static hid_t H5Z_SZ_ERRCLASS = -1;
 
 
 #define ERROR(FNAME)                                              \
@@ -19,14 +33,12 @@ do {                                                              \
     return 1;                                                     \
 } while(0)
 
-/*#define H5Z_SZ_PUSH_AND_GOTO(MAJ, MIN, RET, MSG)     \
+#define H5Z_SZ_PUSH_AND_GOTO(MAJ, MIN, RET, MSG)     \
 do                                                    \
 {                                                     \
-//	H5Epush(H5E_DEFAULT,__FILE__,_funcname_,__LINE__, 
-//		H5Z_SZ_ERRCLASS,MAJ,MIN,MSG);                
-	retval = RET;                                     \
-	goto done;                                        \
-} while(0)*/
+	H5Epush(H5E_DEFAULT,__FILE__,_funcname_,__LINE__,H5Z_SZ_ERRCLASS,MAJ,MIN,MSG); \               
+	return RET;                                     \
+} while(0)
 
 
 #define LITTLE_ENDIAN_SYSTEM 0

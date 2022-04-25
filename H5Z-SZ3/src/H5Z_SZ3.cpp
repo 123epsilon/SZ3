@@ -6,15 +6,16 @@
 #include <fstream>
 #include "H5PLextern.h"
 
-#define CONFIG_PATH "sz.config"
+#define CONFIG_PATH "sz3.config"
 
 using namespace SZ;
 
-//h5repack -f UD=32034,0 /home/arham23/Software/SZ3/test/testfloat_8_8_128.dat.h5 tf_8_8_128.dat.sz.h5
+//h5repack -f UD=32024,0 /home/arham23/Software/SZ3/test/testfloat_8_8_128.dat.h5 tf_8_8_128.dat.sz.h5
 
-//load from "sz.config" in local directory if 1 else use default values or cd values
+//load from "sz3.config" in local directory if 1 else use default values or cd values
+
 int loadConfigFile = 0;
-
+int freshCdValues = 0;
 int MAX_CHUNK_SIZE = 2E32 - 1;
 
 //filter definition
@@ -47,39 +48,33 @@ static herr_t H5Z_sz3_set_local(hid_t dcpl_id, hid_t type_id, hid_t chunk_space_
 	H5T_class_t dclass;
 	H5T_sign_t dsign;
 	unsigned int flags = 0;
-	//conf_params = H5Z_SZ_Init_Default();
-	/*if(load_conffile_flag)
-		H5Z_SZ_Init(cfgFile);
-	else
-		H5Z_SZ_Init(NULL);*/
-	
-	int dataType = 0;//SZ_FLOAT;
+	int dataType = 0; //SZ_FLOAT;
 
-	//if sz.config in current directory, read config values from it
+	//check if sz3.config in current directory
 	std::ifstream f(CONFIG_PATH);
 	if(f.good()){
-		printf("sz.config found!");
+		printf("sz3.config found!");
 		loadConfigFile = 1;
 	}
 	else
-		printf("sz.config not found");
+		printf("sz3.config not found");
 
 	f.close();
 
 	//herr_t ret = H5Zregister(H5Z_SZ3);
 	//printf("REGISTER: %i\n", ret);
 
-	printf("DC\n");
+	//printf("DC\n");
 	if (0 > (dclass = H5Tget_class(type_id)))
-		{return -1;}//H5Z_SZ_PUSH_AND_GOTO(H5E_ARGS, H5E_BADTYPE, -1, "not a datatype");
+		H5Z_SZ_PUSH_AND_GOTO(H5E_ARGS, H5E_BADTYPE, -1, "not a datatype");
 
-	printf("DS\n");
+	//printf("DS\n");
 	if (0 == (dsize = H5Tget_size(type_id)))
-		{return -1;}///H5Z_SZ_PUSH_AND_GOTO(H5E_ARGS, H5E_BADTYPE, -1, "size is smaller than 0!");
+		H5Z_SZ_PUSH_AND_GOTO(H5E_ARGS, H5E_BADTYPE, -1, "size is smaller than 0!");
 
-	printf("ND\n");
+	//printf("ND\n");
 	if (0 > (ndims = H5Sget_simple_extent_dims(chunk_space_id, dims, 0)))
-		{return -1;}///H5Z_SZ_PUSH_AND_GOTO(H5E_ARGS, H5E_BADTYPE, -1, "not a data space");
+		H5Z_SZ_PUSH_AND_GOTO(H5E_ARGS, H5E_BADTYPE, -1, "not a data space");
 		
 	for (i = 0; i < ndims; i++)
 	{
@@ -97,31 +92,76 @@ static herr_t H5Z_sz3_set_local(hid_t dcpl_id, hid_t type_id, hid_t chunk_space_
 	for(i = 0; i < ndims_used; i++){
 		printf("DIMS[%i] : %zu\t", i, dims_used[i]);
 	}
-	printf("\nDCEQ\n");
+	//printf("\nDCEQ\n");
 
 	if(dclass == H5T_FLOAT)
 	{
 		dataType = dsize == 4 ? 0 : 1; //set float or double
 	}
+	else if(dclass == H5T_INTEGER)
+	{
+		if (0 > (dsign = H5Tget_sign(type_id)))
+			H5Z_SZ_PUSH_AND_GOTO(H5E_ARGS, H5E_BADTYPE, -1, "Error in calling H5Tget_sign(type_id)....");		
+		if(dsign == H5T_SGN_NONE) //unsigned
+		{
+			switch(dsize)
+			{
+			case 1:
+				dataType = SZ_UINT8;
+				break;
+			case 2:
+				dataType = SZ_UINT16;
+				break;
+			case 4:
+				dataType = SZ_UINT32;
+				break;
+			case 8:
+				dataType = SZ_UINT64;
+				break;
+			}
+		}
+		else
+		{
+			switch(dsize)
+			{
+			case 1:
+				dataType = SZ_INT8;
+				break;
+			case 2:
+				dataType = SZ_INT16;
+				break;
+			case 4:
+				dataType = SZ_INT32;
+				break;
+			case 8:
+				dataType = SZ_INT64;
+				break;
+			}			
+		}
+	}
 	else{
-		printf("Invalid Data Class: %i\n", dclass);
-		return -1;
+		H5Z_SZ_PUSH_AND_GOTO(H5E_PLINE, H5E_CANTGET, 0, "datatype class must be H5T_FLOAT or H5T_INTEGER");
 	}
 
-	printf("GETFILT");
+	//printf("GETFILT");
 
-	size_t mem_cd_nelmts = 0, cd_nelmts = 0;
-	unsigned int mem_cd_values[12];
+	size_t mem_cd_nelmts = 12*sizeof(unsigned int), cd_nelmts = 0;
+	unsigned int *mem_cd_values = (unsigned int*) malloc(12*sizeof(unsigned int));
+
+	printf("MEM\n");
 
 	if (0 > H5Pget_filter_by_id(dcpl_id, H5Z_FILTER_SZ3, &flags, &mem_cd_nelmts, mem_cd_values, 0, NULL, NULL)){
-		printf("Failed to get SZ3 filter in %s\n", _funcname_);
-		
-		return -1;
+		H5Z_SZ_PUSH_AND_GOTO(H5E_PLINE, H5E_CANTGET, 0, "unable to get current SZ3 cd_values");
 	}
 
-	printf("GETCD");
+	for(int i = 0; i < mem_cd_nelmts; i++)
+		printf("%u ", mem_cd_values[i]);
 
-	int freshCdValues = 0;
+	printf("\n");
+
+	//printf("GETCD");
+
+	freshCdValues = 0;
 	switch(ndims_used)
 	{
 	case 1: 
@@ -151,29 +191,79 @@ static herr_t H5Z_sz3_set_local(hid_t dcpl_id, hid_t type_id, hid_t chunk_space_
 			freshCdValues = 1;
 		break;
 	default: 
-		printf("Requires chunks w/1,2,3 or 4 non-unity dims\n");
-		return -1; 
+		H5Z_SZ_PUSH_AND_GOTO(H5E_PLINE, H5E_BADVALUE, 0, "requires chunks w/1,2,3 or 4 non-unity dims"); 
 	}
 
-	printf("SETCD\n");
+	printf("set_local dims: %i, %i, %i, %i, %i\n", r1,r2,r3,r4,r5); 
+
+	//printf("SETCD\n");
 
 	if(freshCdValues)
 	{
 		printf("SETCDVALS\n");
+		
+
 		unsigned int* cd_values = NULL;
 		SZ_metaDataToCdArray(&cd_nelmts, &cd_values, dataType, r5, r4, r3, r2, r1);
 		/* Now, update cd_values for the filter */
 		if (0 > H5Pmodify_filter(dcpl_id, H5Z_FILTER_SZ3, flags, cd_nelmts, cd_values))
-			//H5Z_SZ_PUSH_AND_GOTO(H5E_PLINE, H5E_BADVALUE, 0, "failed to modify cd_values");
 		{
-			printf("Failed to modify cd_values\n");
 			free(cd_values);
-			return -1;
+			free(mem_cd_values);
+			H5Z_SZ_PUSH_AND_GOTO(H5E_PLINE, H5E_BADVALUE, 0, "failed to modify cd_values");	
+			
 		}
-	}	
-	
 
-	printf("FINSETLOCAL\n");
+		
+		free(cd_values);
+		free(mem_cd_values);
+			
+	}
+	else
+	{
+	
+		printf("REPCDVALS\n");
+		unsigned int* cd_values = NULL;
+		unsigned int* final_cd_values = (unsigned int*) malloc(mem_cd_nelmts * sizeof(unsigned int));
+		size_t tmp = 0;
+		SZ_metaDataToCdArray(&tmp, &cd_values, dataType, r5, r4, r3, r2, r1);
+		std::memcpy(final_cd_values, cd_values, tmp * sizeof(unsigned int));
+		std::memcpy(final_cd_values+tmp, mem_cd_values+tmp, (mem_cd_nelmts-tmp) * sizeof(unsigned int)); 
+
+		printf("%u %u\nCD\n", tmp, mem_cd_nelmts);
+
+		for(int i =0; i < tmp; i++)
+			printf("%u ", cd_values[i]);
+		
+		printf("\n");
+
+		for(int i = 0; i < mem_cd_nelmts; i++)
+			printf("%u ", mem_cd_values[i]);
+
+		printf("\n");
+
+		for(int i = 0; i < mem_cd_nelmts; i++)
+			printf("%u ", final_cd_values[i]);
+
+		printf("\n");
+
+		if(0 > H5Pmodify_filter(dcpl_id, H5Z_FILTER_SZ3, flags, mem_cd_nelmts, final_cd_values))
+		{
+
+			free(final_cd_values);
+			free(cd_values);
+			H5Z_SZ_PUSH_AND_GOTO(H5E_PLINE, H5E_BADVALUE, 0, "failed to modify cd_values");
+
+		}
+		
+		free(mem_cd_values);
+		free(final_cd_values);
+		free(cd_values);
+
+	}
+
+
+	
 	retval = 1;
 
 	return retval;
@@ -196,7 +286,6 @@ static size_t H5Z_filter_sz3(unsigned int flags, size_t cd_nelmts, const unsigne
     //1 if error info included else 0
     int withErrInfo = checkCDValuesWithErrors(cd_nelmts, cd_values);
     int error_mode = 0;
-    //TODO read in from config in set_local, for now set defaults
     int cmp_algo = 1;
     int interp_algo = 1;
     float abs_error = 1E-4, rel_error = 1E-3, l2norm_error = 1E-4, psnr = 1E-3;
@@ -205,6 +294,7 @@ static size_t H5Z_filter_sz3(unsigned int flags, size_t cd_nelmts, const unsigne
     else
         SZ_cdArrayToMetaData(cd_nelmts, cd_values, &dimSize, &dataType, &r5, &r4, &r3, &r2, &r1);
 
+    printf("\nwithErr: %i\n", withErrInfo);
 
     if(flags & H5Z_FLAG_REVERSE){
         /*decompress data*/
@@ -214,7 +304,7 @@ static size_t H5Z_filter_sz3(unsigned int flags, size_t cd_nelmts, const unsigne
         size_t nbEle = computeDataLength(r5,r4,r3,r2,r1);
 
         switch(dataType){
-            case 0: //FLOAT
+            case SZ_FLOAT: //FLOAT
             {
                 printf("\nDcF\n");
 		float *f_decompressedData = new float[nbEle];
@@ -226,7 +316,7 @@ static size_t H5Z_filter_sz3(unsigned int flags, size_t cd_nelmts, const unsigne
                 break;
             }
 
-            case 1: //DOUBLE
+            case SZ_DOUBLE: //DOUBLE
             {
                 double *d_decompressedData = new double[nbEle];
                 SZ_decompress(conf, (char *) *buf, nbytes, d_decompressedData);
@@ -236,7 +326,7 @@ static size_t H5Z_filter_sz3(unsigned int flags, size_t cd_nelmts, const unsigne
                 break;
             }
 
-            /*case 2: //INT 8
+            case SZ_INT8: //INT 8
             {
                 char *c_decompressedData = new char[nbEle];
                 SZ_decompress(conf, (char *) *buf, nbytes, c_decompressedData);
@@ -246,7 +336,7 @@ static size_t H5Z_filter_sz3(unsigned int flags, size_t cd_nelmts, const unsigne
                 break;
             }
 
-            case 3: //UINT 8
+            case SZ_UINT8: //UINT 8
             {
                 unsigned char *uc_decompressedData = new unsigned char[nbEle];
                 SZ_decompress(conf, (char *) *buf, nbytes, uc_decompressedData);
@@ -256,7 +346,7 @@ static size_t H5Z_filter_sz3(unsigned int flags, size_t cd_nelmts, const unsigne
                 break;
             }
 
-            case 4: //INT 16
+            case SZ_INT16: //INT 16
             {
                 short *s_decompressedData = new short[nbEle];
                 SZ_decompress(conf, (char *) *buf, nbytes, s_decompressedData);
@@ -266,7 +356,7 @@ static size_t H5Z_filter_sz3(unsigned int flags, size_t cd_nelmts, const unsigne
                 break;
             }
 
-            case 5: //UINT 16
+            case SZ_UINT16: //UINT 16
             {
                 unsigned short *us_decompressedData = new unsigned short[nbEle];
                 SZ_decompress(conf, (char *) *buf, nbytes, us_decompressedData);
@@ -276,7 +366,7 @@ static size_t H5Z_filter_sz3(unsigned int flags, size_t cd_nelmts, const unsigne
                 break;
             }
 
-            case 6: //INT 32
+            case SZ_INT32: //INT 32
             {
                 int *i_decompressedData = new int[nbEle];
                 SZ_decompress(conf, (char *) *buf, nbytes, i_decompressedData);
@@ -286,7 +376,7 @@ static size_t H5Z_filter_sz3(unsigned int flags, size_t cd_nelmts, const unsigne
                 break;
             }
 
-            case 7: //UINT 32
+            case SZ_UINT32: //UINT 32
             {
                 unsigned int *ui_decompressedData = new unsigned int[nbEle];
                 SZ_decompress(conf, (char *) *buf, nbytes, ui_decompressedData);
@@ -296,7 +386,7 @@ static size_t H5Z_filter_sz3(unsigned int flags, size_t cd_nelmts, const unsigne
                 break;
             }
 
-            case 8: //INT 64
+            case SZ_INT64: //INT 64
             {
                 long *l_decompressedData = new long[nbEle];
                 SZ_decompress(conf, (char *) *buf, nbytes, l_decompressedData);
@@ -306,7 +396,7 @@ static size_t H5Z_filter_sz3(unsigned int flags, size_t cd_nelmts, const unsigne
                 break;
             }
 
-            case 9: //UINT 64
+            case SZ_UINT64: //UINT 64
             {
                 unsigned long *ul_decompressedData = new unsigned long[nbEle];
                 SZ_decompress(conf, (char *) *buf, nbytes, ul_decompressedData);
@@ -314,7 +404,7 @@ static size_t H5Z_filter_sz3(unsigned int flags, size_t cd_nelmts, const unsigne
                 *buf = ul_decompressedData;
                 *buf_size = nbEle * sizeof(unsigned long);
                 break;
-            }*/
+            }
 
             default:
             {
@@ -356,8 +446,9 @@ static size_t H5Z_filter_sz3(unsigned int flags, size_t cd_nelmts, const unsigne
             exit(0);
         }
 
-	//if config file found read config file
-	if(loadConfigFile){
+	//if config file found and no user defined params, read the config file
+	if(loadConfigFile && freshCdValues){
+		printf("Loading sz3.config ...\n");
 		conf.loadcfg(CONFIG_PATH);
 	}
 	else{
@@ -367,6 +458,8 @@ static size_t H5Z_filter_sz3(unsigned int flags, size_t cd_nelmts, const unsigne
 		conf.relErrorBound = rel_error;
 		conf.l2normErrorBound = l2norm_error;
 		conf.psnrErrorBound = psnr;
+
+		printf("PARAMS: mode|%i, abs_eb|%f, rel_eb|%f, l2_eb|%f, psnr_eb|%f\n", error_mode, abs_error, rel_error, l2norm_error, psnr);
 
 		if(cmp_algo < 0 || cmp_algo > 2){
 		    printf("Invalid compression algo: %i, should be in [0,2]", cmp_algo);
@@ -389,69 +482,65 @@ static size_t H5Z_filter_sz3(unsigned int flags, size_t cd_nelmts, const unsigne
 
 
         switch(dataType){
-            case 0: //FLOAT
+            case SZ_FLOAT: //FLOAT
             {
-                printf("Compressing Float Data");
-                float* f_data = (float*) (*buf);
-
-                compressedData = SZ_compress(conf, f_data, outSize);
-                printf("Leaving compress float case");
+                compressedData = SZ_compress(conf, (float*) *buf, outSize);
                 break;
             }
 
-            case 1: //DOUBLE
+            case SZ_DOUBLE: //DOUBLE
             {
                 compressedData = SZ_compress(conf, (double*) *buf, outSize);
                 break;
             }
 
-            /*case 2: //INT 8
+            case SZ_INT8: //INT 8
             {
                 compressedData = SZ_compress(conf, (char*) *buf, outSize);
                 break;
             }
 
-            case 3: //UINT 8
+            case SZ_UINT8: //UINT 8
             {
                 compressedData = SZ_compress(conf, (unsigned char*) *buf, outSize);
                 break;
             }
 
-            case 4: //INT 16
+            case SZ_INT16: //INT 16
             {
                 compressedData = SZ_compress(conf, (short*) *buf, outSize);
                 break;
             }
 
-            case 5: //UINT 16
+            case SZ_UINT16: //UINT 16
             {
                 compressedData = SZ_compress(conf, (unsigned short*) *buf, outSize);
                 break;
             }
 
-            case 6: //INT 32
+            case SZ_INT32: //INT 32
             {
-                compressedData = SZ_compress(conf, (int32_t*) *buf, outSize);
+                compressedData = SZ_compress(conf, (int*) *buf, outSize);
                 break;
             }
 
-            case 7: //UINT 32
+            case SZ_UINT32: //UINT 32
             {
                 compressedData = SZ_compress(conf, (unsigned int*) *buf, outSize);
                 break;
             }
 
-            case 8: //INT 64
+            case SZ_INT64: //INT 64
             {
                 compressedData = SZ_compress(conf, (long*) *buf, outSize);
                 break;
             }
 
-            case 9: //UINT 64
+            case SZ_UINT64: //UINT 64
             {
                 compressedData = SZ_compress(conf, (unsigned long*) *buf, outSize);
                 break;
-            }*/
+            }
 
             default:
             {
@@ -486,12 +575,12 @@ void SZ_cdArrayToMetaData(size_t cd_nelmts, const unsigned int cd_values[], int*
     switch(*dimSize)
     {
         case 1:
-            SZ::intToBytes_bigEndian(bytes, cd_values[2]);
-            SZ::intToBytes_bigEndian(&bytes[4], cd_values[3]);
+            SZ::int32ToBytes_bigEndian(bytes, cd_values[2]);
+            SZ::int32ToBytes_bigEndian(&bytes[4], cd_values[3]);
             if(sizeof(size_t)==4)
-                *r1 = (unsigned int) SZ::bytesToLong_bigEndian(bytes);
+                *r1 = (unsigned int) SZ::bytesToInt64_bigEndian(bytes);
             else
-                *r1 = (unsigned long) SZ::bytesToLong_bigEndian(bytes);
+                *r1 = (unsigned long) SZ::bytesToInt64_bigEndian(bytes);
             *r2 = *r3 = *r4 = *r5 = 0;
             break;
         case 2:
@@ -578,9 +667,9 @@ void SZ_copymetaDataToCdArray(size_t* cd_nelmts, unsigned int *cd_values, int da
     {
         case 1:
             size = (unsigned long)r1;
-            SZ::longToBytes_bigEndian(bytes, size);
-            cd_values[2] = SZ::bytesToInt_bigEndian(bytes);
-            cd_values[3] = SZ::bytesToInt_bigEndian(&bytes[4]);
+            SZ::int64ToBytes_bigEndian(bytes, size);
+            cd_values[2] = SZ::bytesToInt32_bigEndian(bytes);
+            cd_values[3] = SZ::bytesToInt32_bigEndian(&bytes[4]);
             *cd_nelmts = 4;
             break;
         case 2:

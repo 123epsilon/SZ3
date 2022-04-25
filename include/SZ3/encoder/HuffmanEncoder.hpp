@@ -40,7 +40,7 @@ namespace SZ {
             node *qqq, *qq; //the root node of the HuffmanTree is qq[1]
             int n_nodes; //n_nodes is for compression
             int qend;
-            unsigned long **code;
+            uint64_t **code;
             unsigned char *cout;
             int n_inode; //n_inode is for decompression
             int maxBitCount;
@@ -69,12 +69,12 @@ namespace SZ {
 
             huffmanTree->pool = (struct node_t *) malloc(huffmanTree->allNodes * 2 * sizeof(struct node_t));
             huffmanTree->qqq = (node *) malloc(huffmanTree->allNodes * 2 * sizeof(node));
-            huffmanTree->code = (unsigned long **) malloc(huffmanTree->stateNum * sizeof(unsigned long *));
+            huffmanTree->code = (uint64_t **) malloc(huffmanTree->stateNum * sizeof(uint64_t *));
             huffmanTree->cout = (unsigned char *) malloc(huffmanTree->stateNum * sizeof(unsigned char));
 
             memset(huffmanTree->pool, 0, huffmanTree->allNodes * 2 * sizeof(struct node_t));
             memset(huffmanTree->qqq, 0, huffmanTree->allNodes * 2 * sizeof(node));
-            memset(huffmanTree->code, 0, huffmanTree->stateNum * sizeof(unsigned long *));
+            memset(huffmanTree->code, 0, huffmanTree->stateNum * sizeof(uint64_t *));
             memset(huffmanTree->cout, 0, huffmanTree->stateNum * sizeof(unsigned char));
             huffmanTree->qq = huffmanTree->qqq - 1;
             huffmanTree->n_nodes = 0;
@@ -110,9 +110,9 @@ namespace SZ {
         //save the huffman Tree in the compressed data
         uint save(uchar *&c) {
             write(offset, c);
-            intToBytes_bigEndian(c, nodeCount);
+            int32ToBytes_bigEndian(c, nodeCount);
             c += sizeof(int);
-            intToBytes_bigEndian(c, huffmanTree->stateNum / 2);
+            int32ToBytes_bigEndian(c, huffmanTree->stateNum / 2);
             c += sizeof(int);
             uint totalSize = 0;// = convert_HuffTree_to_bytes_anyStates(nodeCount, c);
             // std::cout << "nodeCount = " << nodeCount << std::endl;
@@ -122,7 +122,6 @@ namespace SZ {
                 totalSize = convert_HuffTree_to_bytes_anyStates<unsigned short>(nodeCount, c);
             else
                 totalSize = convert_HuffTree_to_bytes_anyStates<unsigned int>(nodeCount, c);
-            // printf("1\n");
             c += totalSize;
             return totalSize + sizeof(int) + sizeof(int);
         }
@@ -140,7 +139,7 @@ namespace SZ {
             int state;
             uchar *p = bytes + sizeof(size_t);
             int lackBits = 0;
-            //long totalBitSize = 0, maxBitSize = 0, bitSize21 = 0, bitSize32 = 0;
+            //int64_t totalBitSize = 0, maxBitSize = 0, bitSize21 = 0, bitSize32 = 0;
             for (i = 0; i < num_bin; i++) {
                 state = bins[i] - offset;
                 bitSize = huffmanTree->cout[state];
@@ -150,13 +149,13 @@ namespace SZ {
                                                                 1; //it's equal to the number of bytes involved (for *outSize)
                     byteSizep = bitSize / 8; //it's used to move the pointer p for next data
                     if (byteSize <= 8) {
-                        longToBytes_bigEndian(p, (huffmanTree->code[state])[0]);
+                        int64ToBytes_bigEndian(p, (huffmanTree->code[state])[0]);
                         p += byteSizep;
                     } else //byteSize>8
                     {
-                        longToBytes_bigEndian(p, (huffmanTree->code[state])[0]);
+                        int64ToBytes_bigEndian(p, (huffmanTree->code[state])[0]);
                         p += 8;
-                        longToBytes_bigEndian(p, (huffmanTree->code[state])[1]);
+                        int64ToBytes_bigEndian(p, (huffmanTree->code[state])[1]);
                         p += (byteSizep - 8);
                     }
                     outSize += byteSize;
@@ -165,8 +164,9 @@ namespace SZ {
                     *p = (*p) | (unsigned char) ((huffmanTree->code[state])[0] >> (64 - lackBits));
                     if (lackBits < bitSize) {
                         p++;
-                        long newCode = (huffmanTree->code[state])[0] << lackBits;
-                        longToBytes_bigEndian(p, newCode);
+
+                        int64_t newCode = (huffmanTree->code[state])[0] << lackBits;
+                        int64ToBytes_bigEndian(p, newCode);
 
                         if (bitSize <= 64) {
                             bitSize -= lackBits;
@@ -186,7 +186,7 @@ namespace SZ {
                                 *p = (*p) | (unsigned char) ((huffmanTree->code[state])[0] >> (64 - lackBits));
                                 p++;
                                 newCode = (huffmanTree->code[state])[1] << lackBits;
-                                longToBytes_bigEndian(p, newCode);
+                                int64ToBytes_bigEndian(p, newCode);
                                 bitSize -= lackBits;
                                 byteSize = bitSize % 8 == 0 ? bitSize / 8 : bitSize / 8 + 1;
                                 byteSizep = bitSize / 8;
@@ -248,7 +248,6 @@ namespace SZ {
                     count++;
                 }
             }
-            if (t != n) printf("garbage input\n");
             bytes += encodedLength;
             return out;
         }
@@ -261,8 +260,8 @@ namespace SZ {
         //load Huffman tree
         void load(const uchar *&c, size_t &remaining_length) {
             read(offset, c, remaining_length);
-            nodeCount = bytesToInt_bigEndian(c);
-            int stateNum = bytesToInt_bigEndian(c + sizeof(int)) * 2;
+            nodeCount = bytesToInt32_bigEndian(c);
+            int stateNum = bytesToInt32_bigEndian(c + sizeof(int)) * 2;
             size_t encodeStartIndex;
             if (nodeCount <= 256)
                 encodeStartIndex = 1 + 3 * nodeCount * sizeof(unsigned char) + nodeCount * sizeof(T);
@@ -476,9 +475,9 @@ namespace SZ {
          * @out2 should be 0 as well.
          * @index: the index of the byte
          * */
-        void build_code(node n, int len, unsigned long out1, unsigned long out2) {
+        void build_code(node n, int len, uint64_t out1, uint64_t out2) {
             if (n->t) {
-                huffmanTree->code[n->c] = (unsigned long *) malloc(2 * sizeof(unsigned long));
+                huffmanTree->code[n->c] = (uint64_t *) malloc(2 * sizeof(uint64_t));
                 if (len <= 64) {
                     (huffmanTree->code[n->c])[0] = out1 << (64 - len);
                     (huffmanTree->code[n->c])[1] = out2;
