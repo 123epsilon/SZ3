@@ -10,7 +10,7 @@
 #include <random>
 #include <algorithm>
 
-#define OUTFILE "/home/ac.arhammkhan/sz3_data.csv"
+#define OUTFILE "/home/ac.arhammkhan/sz3_analyze_data/sz3_data.csv"
 
 
 int main(int argc, char** argv)
@@ -42,7 +42,7 @@ int main(int argc, char** argv)
 	}
 
 
-	sprintf(targetFile, "%s", argv[1]);
+	//sprintf(targetFile, "%s", argv[1]);
 
 	
 	r1 = atoi(argv[2]);
@@ -68,7 +68,7 @@ int main(int argc, char** argv)
 
 	std::ifstream f(targetFile, std::ios::binary);
 
-	printf("Dimension sizes: n5=%u, n4=%u, n3=%u, n2=%u, n1=%u\n", r5, r4, r3, r2, r1);
+	//printf("Dimension sizes: n5=%u, n4=%u, n3=%u, n2=%u, n1=%u\n", r5, r4, r3, r2, r1);
 	//printf("%zu\n", conf.num); 
 
 	float* data = new float[nbEle];
@@ -146,7 +146,7 @@ int main(int argc, char** argv)
 
 					float compress_ratio = conf.num * 1.0 * sizeof(float) / outSize;
 					
-					printf("outsize: %zu\t compress_ratio: %f\n", outSize, compress_ratio);
+					//printf("outsize: %zu\t compress_ratio: %f\n", outSize, compress_ratio);
 
 
 					float avg_err = 0;
@@ -162,10 +162,10 @@ int main(int argc, char** argv)
 						if(!isnan(data[i]))
 						{
 							avg_err += abs(data[i] - decData[i]);
-							if(i >= 100 && i < 110)
+							/*if(i >= 100 && i < 110)
 							{
 								printf("data, decData, diff, absDiff\n%f,%f,%f,%f\n", data[i], decData[i], (data[i]-decData[i]), abs(data[i]-decData[i]));	
-							}
+							}*/
 							c++;
 							if(decData[i] < min){ 
 								min = decData[i];
@@ -183,21 +183,21 @@ int main(int argc, char** argv)
 					}
 
 
-					printf("MANUAL dec MIN/MAX: %f / %f   %i, %i\n", min, max, mini, maxi);
+					//printf("MANUAL dec MIN/MAX: %f / %f   %i, %i\n", min, max, mini, maxi);
 					
 					QCAT_DataProperty* Dproperty = computeProperty(QCAT_FLOAT, decData, nbEle);
-					printf("--dec data prop--\n");
-					printProperty(Dproperty);
+					//printf("--dec data prop--\n");
+					//printProperty(Dproperty);
 
-					printf("AE: %f | %zu | %i\n", avg_err, conf.num, c);
+					//printf("AE: %f | %zu | %i\n", avg_err, conf.num, c);
 					avg_err /= conf.num;
-					printf("%f\n", avg_err);
+					//printf("%f\n", avg_err);
 
 
 					//fname, EB_MODE, EB, CMPR_ALGO, INTERP_ALGO, interpBlockSize, quantBinCnt, size(bytes), nbEle, min, max, range, avg_value, entropy, variance, avg_err, compress ratio, compress_time  
-					printf("fname, EB_MODE, EB, CMPR_ALGO, INTERP_ALGO, interpBlockSize, quantBinCnt,\ 
+					/*printf("fname, EB_MODE, EB, CMPR_ALGO, INTERP_ALGO, interpBlockSize, quantBinCnt,\ 
 					size(bytes), nbEle, min, max, range, avg_value, entropy, variance, \
-					Nmin, Nmax, Nrange, Navg_value, Nentropy, Nvariance, avg_err, compress_ratio, compress_time\n");
+					Nmin, Nmax, Nrange, Navg_value, Nentropy, Nvariance, avg_err, compress_ratio, compress_time\n");*/
 
 					char outStr[4096];
 					sprintf(outStr, "%s, %s, %f, %s, %s, %i, %i, %i, %i, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f\n", 
@@ -206,7 +206,7 @@ int main(int argc, char** argv)
 							Dproperty->minValue, Dproperty->maxValue, Dproperty->valueRange, Dproperty->avgValue, Dproperty->entropy, Dproperty->zeromean_variance, 
 							avg_err, compress_ratio, compress_time);
 					
-					printf("%s", outStr);
+					//printf("%s", outStr);
 					outfile << outStr;
 
 					delete[] oriData;
