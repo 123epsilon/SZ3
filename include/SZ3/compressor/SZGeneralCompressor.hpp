@@ -35,7 +35,6 @@ namespace SZ {
 //            timer.stop("Prediction & Quantization");
 
             size_t bufferSize = 3.0 * (frontend.size_est());
-	    printf("FE SE: %f", frontend.size_est());
             uchar *buffer = new uchar[bufferSize];
             uchar *buffer_pos = buffer;
 
