@@ -9,9 +9,7 @@
 #include <cmath>
 #include <random>
 #include <algorithm>
-
-#define OUTFILE "/home/ac.arhammkhan/sz3_analyze_data/sz3_data.csv"
-
+#include <string>
 
 int main(int argc, char** argv)
 {
@@ -19,7 +17,8 @@ int main(int argc, char** argv)
 	//turn float exception to SIGFPE, stop gdb
 	feenableexcept(FE_DIVBYZERO);
 
-	char targetFile[640];
+	std::string targetFile;
+	std::string outdir;
 	size_t r1=0,r2=0,r3=0,r4=0,r5=0,outSize;
 	size_t nbEle = 0;
 	float errorBounds[9] = {10.0, 5.0, 1.0, 1E-1, 1E-2, 1E-3, 1E-4, 1E-5, 1E-6}; //{0.01, 0.05, 0.1, 0.15, 0.2};
@@ -34,35 +33,37 @@ int main(int argc, char** argv)
 	char *cmpData;
 	float *decData;
 
-	if (argc < 3) {
+	if (argc < 4) {
 	
-		printf("Usage: sz3_analyze [target file] [r1,r2,...]\n");
-		printf("Example: sz3_analyze testfloat_8_8_128.dat 8 8 128\n");
+		printf("Usage: sz3_analyze [outdir] [target file] [r1,r2,...]\n");
+		printf("Example: sz3_analyze /home/mydata/ testfloat_8_8_128.dat 8 8 128\n");
 		exit(0);
 	}
 
 
-	//sprintf(targetFile, "%s", argv[1]);
 
+	//sprintf(targetFile, "%s", argv[1]);
+	outdir = argv[1];
+	targetFile = argv[2];
 	
-	r1 = atoi(argv[2]);
+	r1 = atoi(argv[3]);
 	nbEle = r1;
-	if(argc >= 4){
-		r2 = atoi(argv[3]);
+	if(argc >= 5){
+		r2 = atoi(argv[4]);
 		nbEle *= r2;
 	}
-	if(argc >= 5){
-        	r3 = atoi(argv[4]);
+	if(argc >= 6){
+        	r3 = atoi(argv[5]);
 		nbEle *= r3;
         }
 
-	if(argc >= 6){
-		r4 = atoi(argv[5]);
+	if(argc >= 7){
+		r4 = atoi(argv[6]);
 		nbEle *= r4;
 	}
 
-	if(argc >= 7){
-        	r5 = atoi(argv[6]);
+	if(argc >= 8){
+        	r5 = atoi(argv[7]);
 		nbEle *= r5;
         }
 
@@ -79,15 +80,25 @@ int main(int argc, char** argv)
 
 	printProperty(property);	
 
+	std::string output_path;
+	if(outdir[outdir.length()-1] != '/')
+	{
+		outdir.append("/");
+	}
 
-	std::ofstream outfile(OUTFILE, std::ios::out | std::ios::in | std::ios::ate);
-	
+	size_t p = targetFile.find_last_of("/");
+	output_path = outdir + targetFile.substr( p == std::string::npos ? 0 : p+1 , targetFile.length()) + ".csv";
+
+	std::ofstream outfile(output_path, std::ios::out);
+
 	if(!outfile.is_open())
 	{
-		printf("Error, can't open %s for logging", OUTFILE);
-		exit(0);
+		printf("Error, can't open %s for logging\n", output_path.c_str());
+		exit(1);
 	}
 	
+	printf("Writing to %s | Target: %s\n", output_path.c_str(), targetFile.c_str());
+
 	outfile.seekp(0, std::ios::end);
 
 	
@@ -201,7 +212,7 @@ int main(int argc, char** argv)
 
 					char outStr[4096];
 					sprintf(outStr, "%s, %s, %f, %s, %s, %i, %i, %i, %i, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f\n", 
-							targetFile, SZ::EB_STR[EB_MODE], eb, SZ::ALGO_STR[ALG_MODE], SZ::INTERP_ALGO_STR[INTERP_MODE], bs, binCnt,
+							targetFile.c_str(), SZ::EB_STR[EB_MODE], eb, SZ::ALGO_STR[ALG_MODE], SZ::INTERP_ALGO_STR[INTERP_MODE], bs, binCnt,
 							property->totalByteSize, nbEle, property->minValue, property->maxValue, property->valueRange, property->avgValue, property->entropy, property->zeromean_variance, 
 							Dproperty->minValue, Dproperty->maxValue, Dproperty->valueRange, Dproperty->avgValue, Dproperty->entropy, Dproperty->zeromean_variance, 
 							avg_err, compress_ratio, compress_time);
