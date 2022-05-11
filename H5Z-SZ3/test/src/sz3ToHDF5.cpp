@@ -24,16 +24,17 @@
 
 #define DATASET "testdata_compressed"
 
-#define LITTLE_ENDIAN_DATA 0
 
 using namespace SZ;
 
 int main(int argc, char * argv[])
 {
 
-    //rw.cpp helper fn to set sysEndianType
-   // detectSysEndianType();
-
+    //(void) helper fn to detect system endian type
+    //detectSysEndianType();
+    //by default sysEndianType and dataEndianType are little endian, can set them manually here
+    //dataEndianType = BIG_ENDIAN_DATA;
+    
     size_t r5=0,r4=0,r3=0,r2=0,r1=0;
     int cmp_algo, interp_algo; //select compression and interpolation for SZ3
     char outDir[640], oriFilePath[640], outputFilePath[640];
@@ -243,7 +244,7 @@ int main(int argc, char * argv[])
     }
     else if(dataType == SZ_UINT8)
     {
-	unsigned char *data = new unsigned char[nbEle];
+	uint8_t *data = new uint8_t[nbEle];
         readfile(oriFilePath, nbEle, data);	
         
 	printf("original data = ");
@@ -267,7 +268,7 @@ int main(int argc, char * argv[])
     else if(dataType == SZ_INT16)
     {
 	
-        short *data = new short[nbEle];
+        int16_t *data = new int16_t[nbEle];
 	    readfile(oriFilePath, nbEle, data);
 	
 	    printf("original data = ");
@@ -290,7 +291,7 @@ int main(int argc, char * argv[])
     }
     else if(dataType == SZ_UINT16)
     {
-        unsigned short *data = new unsigned short[nbEle];
+        uint16_t *data = new uint16_t[nbEle];
         readfile(oriFilePath, nbEle, data);	
         
 	    printf("original data = ");
@@ -313,8 +314,8 @@ int main(int argc, char * argv[])
     }
     else if(dataType == SZ_INT32)
     {
-       printf("%i \t %i\n", sizeof(int), sizeof(int32_t));
-       int *data = new int[nbEle];
+       //printf("%i \t %i\n", sizeof(int), sizeof(int32_t));
+       int32_t *data = new int32_t[nbEle];
        readfile(oriFilePath, nbEle, data);
 
         printf("original data = ");
@@ -337,7 +338,7 @@ int main(int argc, char * argv[])
     }
     else if(dataType == SZ_UINT32)
     {
-        unsigned int *data = new unsigned int[nbEle];
+        uint32_t *data = new uint32_t[nbEle];
         readfile(oriFilePath, nbEle, data);
         
 	printf("original data = ");
@@ -360,7 +361,7 @@ int main(int argc, char * argv[])
     }
     else if(dataType == SZ_INT64)
     {
-        long *data = new long[nbEle];
+        int64_t *data = new int64_t[nbEle];
         readfile(oriFilePath, nbEle, data);
         
 	printf("original data = ");
@@ -383,7 +384,7 @@ int main(int argc, char * argv[])
     }
     else if(dataType == SZ_UINT64)
     {
-        unsigned long *data = new unsigned long[nbEle];         
+        uint64_t *data = new uint64_t[nbEle];         
 	readfile(oriFilePath, nbEle, data);
         
 	printf("original data = ");
