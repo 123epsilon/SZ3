@@ -147,8 +147,8 @@ int main(int argc, char** argv)
 					conf.quantbinCnt = binCnt;
 					
 					//preserve data for error calc by making a copy
-                                        float* oriData = new float[nbEle];
-                                        memcpy(oriData, data, nbEle*sizeof(float));
+					float* oriData = new float[nbEle];
+					memcpy(oriData, data, nbEle*sizeof(float));
 					
 					outSize = 0;	
 					SZ::Timer timer(true);
