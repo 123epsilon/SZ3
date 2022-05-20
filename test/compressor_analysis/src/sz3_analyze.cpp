@@ -19,7 +19,7 @@ int main(int argc, char** argv)
 
 	std::string targetFile;
 	std::string outdir;
-	size_t r1=0,r2=0,r3=0,r4=0,r5=0,outSize;
+	size_t r1=0,r2=0,r3=0,r4=0,r5=0,outSize =0;
 	size_t nbEle = 0;
 	float errorBounds[9] = {10.0, 5.0, 1.0, 1E-1, 1E-2, 1E-3, 1E-4, 1E-5, 1E-6}; //{0.01, 0.05, 0.1, 0.15, 0.2};
 	int interpBlockSizes[6] = {8,16,32,64,128,256};
@@ -47,24 +47,33 @@ int main(int argc, char** argv)
 	targetFile = argv[2];
 	
 	r1 = atoi(argv[3]);
+	if(r1 == 0)
+	{
+		printf("First dimension can not be zero");
+		exit(0);
+	}
 	nbEle = r1;
 	if(argc >= 5){
 		r2 = atoi(argv[4]);
-		nbEle *= r2;
+		if(r2 != 0)
+			nbEle *= r2;
 	}
 	if(argc >= 6){
-        	r3 = atoi(argv[5]);
-		nbEle *= r3;
+        r3 = atoi(argv[5]);
+		if(r3 != 0)
+			nbEle *= r3;
         }
 
 	if(argc >= 7){
 		r4 = atoi(argv[6]);
-		nbEle *= r4;
+		if(r4 != 0)
+			nbEle *= r4;
 	}
 
 	if(argc >= 8){
-        	r5 = atoi(argv[7]);
-		nbEle *= r5;
+        r5 = atoi(argv[7]);
+		if(r5 != 0)
+			nbEle *= r5;
         }
 
 	std::ifstream f(targetFile, std::ios::binary);
