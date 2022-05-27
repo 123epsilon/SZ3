@@ -1,9 +1,7 @@
-cmake_minimum_required(VERSION 3.13)
-project(SZ3 VERSION 3.1.4.0)
+cmake_minimum_required(VERSION 3.18)
+project(SZ3 VERSION 3.1.5.3)
 include(GNUInstallDirs)
 include(CTest)
-
-set(CMAKE_CXX_FLAGS "-ggdb")
 
 option(BUILD_SHARED_LIBS "build shared libraries by default" ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -48,7 +46,7 @@ pkg_search_module(ZSTD IMPORTED_TARGET libzstd)
 if(ZSTD_FOUND AND NOT SZ3_USE_BUNDLED_ZSTD)
   target_link_libraries(${PROJECT_NAME} INTERFACE PkgConfig::ZSTD)
 else()
-  add_subdirectory(zstd)
+  add_subdirectory(tools/zstd)
   target_link_libraries(${PROJECT_NAME} INTERFACE zstd)
 endif()
 
@@ -57,10 +55,12 @@ if (GSL_FOUND)
   target_compile_definitions(${PROJECT_NAME} INTERFACE -DENABLE_GSL="TRUE")
 endif()
 
-add_subdirectory(test)
+add_subdirectory(examples)
 
-#add hdf5 filter dir
-add_subdirectory(H5Z-SZ3)
+option(BUILD_H5Z_FILTER "build the H5Z-SZ3 filter" OFF)
+if(BUILD_H5Z_FILTER)
+	add_subdirectory(tools/H5Z-SZ3)
+endif()
 
 install(TARGETS ${PROJECT_NAME} 
   EXPORT SZ3Targets
